@@ -1,0 +1,92 @@
+---
+title: "Manner of Exercise"
+author: "Miguel Alfonso Bustamante Sanchez"
+date: "Jul 2, 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Backgroud
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+## Data
+
+The data was obtained from http://groupware.les.inf.puc-rio.br/har.
+
+### Getting
+
+```{r loading}
+library(caret)
+library(knitr)
+library(rpart.plot)
+
+training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", na.strings = c("NA", "", "#DIV/0"))
+
+testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", na.strings = c("NA", "", "#DIV/0"))
+
+```
+
+### Analizing and setting up
+
+```{r checking}
+dim(training)
+dim(testing)
+
+```
+
+Obtaining the necesary partition to train a test the data based on the training data obtained
+```{r settingup}
+inTrain <- createDataPartition(training$classe, p=0.6, list = FALSE)
+training2 <- training[inTrain,]
+testing2 <- training[-inTrain,]
+```
+
+Observing the data obtained from the partitions
+```{r revision}
+dim(training2)
+dim(testing2)
+
+training2 <- training2[lapply(training2, function(x) sum(is.na(x))/length(x))<0.6]
+
+colSToClean <- colnames(training2)
+
+testing2 <- testing2[colSToClean]
+```
+Columns with two many NA's were removed from both sets
+
+## Train Models
+
+### Decision Trees
+
+The model selected was decision tree and to avoid overfitting we are using 10 folds and 3 repeats
+
+```{r decisionTrees}
+
+set.seed(12345)
+control <- trainControl(method="repeatedcv", number=10, repeats=3)
+modelDT <- train(classe ~ .,data = training2, trControl=control, method="rpart", tuneLength=10)
+rpart.plot(modelDT$finalModel)
+
+```
+
+
+Applying training model to testing set.
+```{r prediction}
+predictDT <- predict(modelDT, testing2, type = "raw")
+cDT <- confusionMatrix(predictDT, testing2$classe)
+cDT
+```
+
+The out of sample error for this model was `r 1 - round(cDT$overall[1],digits=6)` and the accuracy is `r round(cDT$overall[1], digits=6)`
+
+## Applying the model on the test data given
+
+```{r finalMove}
+predictFinal <- predict(modelDT, testing, type = "raw")
+predictFinal
+```
+

@@ -1,0 +1,84 @@
+---
+title: "Manner of Exercise Predictions"
+author: "Miguel Alfonso Bustamante Sanchez"
+date: "Jul 2, 2017"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Executive Summary
+
+The analysis shows that Manual Transmission has better mpg than Automatic Transmission, this holds with the other predictors weight (wt) and quarter mile time (qsec).
+The mean MPG difference is 7.25 with an averga of 17.14 for automatic transmission and 24.39 for manual transmission.
+
+We can conclude that manual transmission is better for mpg.
+
+## Data
+
+The data was extracted from the 1974 Motor Trend US magazine, and comprises fuel consumption and 10 aspects of automobile design and performance for 32 automobiles (1973-74 models).
+
+```{r}
+library(caret)
+library(knitr)
+library(rpart.plot)
+
+training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", na.strings = c("NA", "", "#DIV/0"))
+
+testing <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv", na.strings = c("NA", "", "#DIV/0"))
+
+dim(training)
+dim(testing)
+
+
+inTrain <- createDataPartition(training$classe, p=0.6, list = FALSE)
+training2 <- training[inTrain,]
+testing2 <- training[-inTrain,]
+
+dim(training2)
+dim(testing2)
+
+#remove columns with 60% NA's
+
+training2 <- training2[lapply(training2, function(x) sum(is.na(x))/length(x))<0.6]
+
+colSToClean <- colnames(training2)
+
+testing2 <- testing2[colSToClean]
+```
+
+
+```{r}
+set.seed(12345)
+modelDT <- train(classe ~ .,data = training2, method="rpart", tuneLength=10)
+rpart.plot(modelDT$finalModel)
+
+
+predictDT <- predict(modelDT, testing2, type = "raw")
+cDT <- confusionMatrix(predictDT, testing2$classe)
+cDT
+```
+
+```{r}
+set.seed(12345)
+modelRF <- train(classe ~ .,data = training2, method="rf", tuneLength = 10)
+rpart.plot(modelRF$finalModel)
+
+
+predictRF <- predict(modelRF, testing2, type = "raw")
+cRF <- confusionMatrix(predictRF, testing2$classe)
+cRF
+```
+```{r}
+set.seed(12345)
+modelGBM <- train(classe ~ .,data = training2, method="gbm", tuneLength = 10)
+rpart.plot(modelGBM$finalModel)
+
+
+predictGBM <- predict(modelGBM, testing2, type = "raw")
+mGBM <- confusionMatrix(predictGBM, testing2$classe)
+mGBM
+```
