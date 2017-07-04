@@ -22,7 +22,7 @@ The data was obtained from http://groupware.les.inf.puc-rio.br/har.
 ```{r loading}
 library(caret)
 library(knitr)
-library(rpart.plot)
+library(randomForest)
 
 training <- read.csv("https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv", na.strings = c("NA", "", "#DIV/0"))
 
@@ -45,39 +45,39 @@ training2 <- training[inTrain,]
 testing2 <- training[-inTrain,]
 ```
 
-Observing the data obtained from the partitions
-```{r revision}
+Observing the data obtained from the partitions and removing NA columns.
+```{r removingNA}
 dim(training2)
 dim(testing2)
 
-training2 <- training2[lapply(training2, function(x) sum(is.na(x))/length(x))<0.6]
+training2 <- training2[lapply(training2, function(x) sum(is.na(x))/length(x))<0.75]
 
-colSToClean <- colnames(training2)
-
-testing2 <- testing2[colSToClean]
+dim(training2)
 ```
-Columns with two many NA's were removed from both sets
+Cleaning some variables that are not necesary for the model
+```{r revision}
+training3<-training2[,8:length(training2)]
 
-## Train Models
 
-### Decision Trees
+dim(training3)
+```
+## Random Forest
 
-The model selected was decision tree and to avoid overfitting we are using 10 folds and 3 repeats
+We are going to use Random Forest with 3 folds for cross validation.
 
-```{r decisionTrees}
+```{r randomforest}
 
 set.seed(12345)
-control <- trainControl(method="repeatedcv", number=10, repeats=3)
-modelDT <- train(classe ~ .,data = training2, trControl=control, method="rpart", tuneLength=10)
-rpart.plot(modelDT$finalModel)
+modelRF <- randomForest(classe~., data = training3)
+print(modelRF)
 
 ```
 
 
 Applying training model to testing set.
 ```{r prediction}
-predictDT <- predict(modelDT, testing2, type = "raw")
-cDT <- confusionMatrix(predictDT, testing2$classe)
+predictDT <- predict(modelRF, testing2, type = "class")
+cDT <- confusionMatrix(testing2$classe,predictDT)
 cDT
 ```
 
@@ -85,8 +85,8 @@ The out of sample error for this model was `r 1 - round(cDT$overall[1],digits=6)
 
 ## Applying the model on the test data given
 
-```{r finalMove}
-predictFinal <- predict(modelDT, testing, type = "raw")
-predictFinal
+Applying our model to the testing data obtained.
+```{r finalprediction}
+predictDT <- predict(modelRF, testing, type = "class")
+predictDT
 ```
-
